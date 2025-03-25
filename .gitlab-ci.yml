@@ -1,0 +1,26 @@
+before_script:
+  - docker login $CI_REGISTRY --username $CI_REGISTRY_USER --password $CI_REGISTRY_PASSWORD
+
+stages:
+  - build_prod
+  - deploy_prod
+
+build_image_prod:
+  stage: build_prod
+  image: registry.uicgroup.tech/devops/docker:dind
+  script:
+    - make vars-input KEYS=$KEYS
+    - make build-image TAG=$CI_PIPELINE_IID SERVICE_NAME=$CI_PROJECT_NAME PROJECT_NAME=$CI_PROJECT_NAMESPACE REGISTRY=$CI_REGISTRY ENV_TAG=latest
+    - make push-image TAG=$CI_PIPELINE_IID SERVICE_NAME=$CI_PROJECT_NAME PROJECT_NAME=$CI_PROJECT_NAMESPACE REGISTRY=$CI_REGISTRY ENV_TAG=latest
+  only:
+    - master
+
+deploy_image_prod:
+  stage: deploy_prod
+  script:
+    - docker rm -f parfume-frontend
+    - docker run --name parfume-frontend -d -p 18700:3045 --restart always registry.uicgroup.tech/parfum/parfum-front:$CI_PIPELINE_IID
+  only:
+    - master
+  tags: 
+    - contaboAz
